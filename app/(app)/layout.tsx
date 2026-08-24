@@ -7,11 +7,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: profile } = await supabase
-    .from('app_users')
-    .select('name, role')
-    .eq('auth_user_id', user?.id)
-    .maybeSingle();
+  let profile: { name: string | null; role: string | null } | null = null;
+
+  if (user) {
+    const { data } = await supabase
+      .from('app_users')
+      .select('name, role')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+    profile = data as typeof profile;
+  }
 
   return (
     <div className="min-h-screen">
