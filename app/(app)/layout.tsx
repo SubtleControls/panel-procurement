@@ -1,13 +1,15 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 
+type Profile = { name: string | null; role: string | null };
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  let profile: { name: string | null; role: string | null } | null = null;
+  let profile: Profile | null = null;
 
   if (user) {
     const { data } = await supabase
@@ -15,7 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       .select('name, role')
       .eq('auth_user_id', user.id)
       .maybeSingle();
-    profile = data as typeof profile;
+    profile = (data as unknown as Profile | null) ?? null;
   }
 
   return (
