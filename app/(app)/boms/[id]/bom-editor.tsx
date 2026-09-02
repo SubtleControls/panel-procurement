@@ -38,14 +38,20 @@ export function BomEditor({
 
     let cancelled = false;
     const timer = setTimeout(async () => {
-      const { data } = await supabase
-        .from('items')
-        .select('sku, name, make, unit')
-        .or(`sku.ilike.%${term}%,name.ilike.%${term}%`)
-        .eq('is_active', true)
-        .limit(20);
+      // Two queries rather than .or(): PostgREST splits an `or` filter string on
+      // commas, so a term like "Contactor, 3P" is reparsed as extra conditions.
+      const columns = 'sku, name, make, unit';
+      const [byCode, byName] = await Promise.all([
+        supabase.from('items').select(columns).ilike('sku', `%${term}%`).eq('is_active', true).limit(20),
+        supabase.from('items').select(columns).ilike('name', `%${term}%`).eq('is_active', true).limit(20),
+      ]);
 
-      if (!cancelled) setResults((data ?? []) as Item[]);
+      const merged = new Map<string, Item>();
+      for (const row of [...(byCode.data ?? []), ...(byName.data ?? [])]) {
+        merged.set((row as Item).sku, row as Item);
+      }
+
+      if (!cancelled) setResults(Array.from(merged.values()).slice(0, 20));
     }, 250);
 
     return () => {
